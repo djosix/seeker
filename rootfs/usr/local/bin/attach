@@ -1,0 +1,6 @@
+#!/bin/sh
+# attach [session]: attach to a tmux session, creating it if needed (default: main).
+# Fall back to a terminfo entry the image has when the host's TERM is unknown here.
+infocmp "${TERM:-dumb}" >/dev/null 2>&1 || TERM=xterm-256color
+export TERM
+exec tmux new-session -A -s "${1:-main}"

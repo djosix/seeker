@@ -1,0 +1,9 @@
+#!/bin/sh
+# Run ARTEX (Web UI :8787, proxy :8788) against the postgres service, with OpenRouter as its LLM.
+set -eu
+: "${OPENROUTER_API_KEY:?OPENROUTER_API_KEY is empty: set it in .env, then docker compose up -d}"
+export ARTEX_LLM_PROVIDER="${ARTEX_LLM_PROVIDER:-openai}"
+export ARTEX_LLM_BASE_URL="${ARTEX_LLM_BASE_URL:-$OPENROUTER_BASE_URL}"
+export ARTEX_LLM_MODEL="${ARTEX_LLM_MODEL:-$OPENROUTER_MODEL}"
+export OPENAI_API_KEY="${OPENAI_API_KEY:-$OPENROUTER_API_KEY}"
+exec /opt/artex/start.sh -addr :8787 -proxy :8788 "$@"

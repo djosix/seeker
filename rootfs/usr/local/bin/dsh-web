@@ -1,0 +1,8 @@
+#!/bin/sh
+# Start the DeepSeek Harness Web UI, reachable from the host at http://localhost:$DSH_WEB_PORT.
+# dsh refuses wildcard binds, so listen on the container's own address, where Docker forwards the port.
+set -eu
+addr=$(hostname -i | awk '{print $1}')
+exec dsh web --host "$addr" --port 3080 --no-open \
+  --public-url "http://localhost:${DSH_WEB_PORT:-3080}/" \
+  --trusted-host localhost --trusted-host 127.0.0.1 "$@"

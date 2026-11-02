@@ -1,0 +1,31 @@
+#!/bin/sh
+# Host-side shortcuts around docker compose. No argument = attach to the "main" tmux session.
+set -eu
+cd "$(dirname "$0")"
+
+# Pass the host terminal's identity so tmux can match its colours and features.
+term_exec() {
+  docker compose exec -e TERM="${TERM:-xterm-256color}" -e COLORTERM="${COLORTERM:-}" seeker "$@"
+}
+
+# Copy the host's terminfo entry (e.g. xterm-ghostty, xterm-kitty) into the container's
+# ~/.terminfo when Debian doesn't ship it. Best effort: `attach` falls back to xterm-256color.
+sync_terminfo() {
+  [ -n "${TERM:-}" ] || return 0
+  docker compose exec -T seeker infocmp "$TERM" >/dev/null 2>&1 && return 0
+  infocmp -x "$TERM" 2>/dev/null | docker compose exec -T seeker tic -x - >/dev/null 2>&1 || true
+}
+
+cmd=${1:-attach}
+[ $# -gt 0 ] && shift
+case $cmd in
+  up)        docker compose up -d "$@" ;;
+  build)     docker compose build "$@" ;;
+  attach|a)  sync_terminfo; term_exec attach "${1:-main}" ;;
+  ls)        docker compose exec seeker tmux ls ;;
+  sh)        sync_terminfo; term_exec bash -l ;;
+  stop)      docker compose stop ;;
+  down)      docker compose down "$@" ;;
+  logs)      docker compose logs -f "$@" ;;
+  *)         echo "usage: ./seeker [up | build | attach [session] | ls | sh | stop | down | logs]" >&2; exit 2 ;;
+esac

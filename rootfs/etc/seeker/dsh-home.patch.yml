@@ -1,0 +1,20 @@
+# DeepSeek Harness home patch (~/.dsh/cordis.patch.yml), applied on top of every profile.
+# Models go through OpenRouter; URL, key and default model come from the container
+# environment (OPENROUTER_* in the host's .env).
+
+- id: llm-pi-ai
+  config:
+    providers:
+      openrouter:
+        apiKeyEnv: OPENROUTER_API_KEY
+        baseURL: !!js process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'
+
+- id: agent-default-model
+  config:
+    provider: openrouter
+    model: !!js process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v4-pro'
+
+# Don't attach session logs to DeepSeek API requests.
+- id: session-log-deepseek
+  config:
+    enabled: false

@@ -1,0 +1,3 @@
+#!/bin/sh
+# ds "task": run one DeepSeek Harness task in the current directory and print the answer.
+exec dsh --profile headless "$@"

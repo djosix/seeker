@@ -1,0 +1,17 @@
+# Interactive bash defaults for the seeker container (sourced from /etc/bash.bashrc).
+
+HISTSIZE=100000
+HISTFILESIZE=200000
+HISTCONTROL=ignoreboth
+HISTTIMEFORMAT='%F %T  '
+shopt -s histappend checkwinsize globstar
+# Write history as commands run, so every tmux pane keeps its lines.
+PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
+
+[ -r /usr/share/bash-completion/bash_completion ] && . /usr/share/bash-completion/bash_completion
+[ -r /usr/share/doc/fzf/examples/key-bindings.bash ] && . /usr/share/doc/fzf/examples/key-bindings.bash
+
+eval "$(dircolors -b)"
+alias ls='ls --color=auto' ll='ls -alF' la='ls -A' grep='grep --color=auto' ip='ip -color=auto'
+
+PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '
