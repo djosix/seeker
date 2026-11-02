@@ -23,7 +23,7 @@ case $cmd in
   build)     docker compose build "$@" ;;
   attach|a)  sync_terminfo; term_exec attach "${1:-main}" ;;
   ls)        docker compose exec seeker tmux ls ;;
-  sh)        sync_terminfo; term_exec bash -l ;;
+  sh)        sync_terminfo; term_exec zsh -l ;;
   stop)      docker compose stop ;;
   down)      docker compose down "$@" ;;
   logs)      docker compose logs -f "$@" ;;

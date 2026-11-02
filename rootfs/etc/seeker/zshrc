@@ -1,0 +1,5 @@
+# seeker: container additions, sourced at the end of ~/.zshrc (after oh-my-zsh and .dots).
+
+# fzf: Ctrl-R history, Ctrl-T files, Alt-C cd, `**<Tab>` completion. Loaded last so it wins
+# over oh-my-zsh's Ctrl-R. (The slim image drops /usr/share/doc, so use fzf's built-in script.)
+[[ -t 0 ]] && (( $+commands[fzf] )) && source <(fzf --zsh)

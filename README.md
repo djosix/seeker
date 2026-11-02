@@ -22,13 +22,13 @@ $EDITOR .env            # set OPENROUTER_API_KEY
 ./seeker
 ```
 
-Detach with `Ctrl-b d`; everything inside keeps running. Run `./seeker` again to come back.
+Detach with `Ctrl-a d`; everything inside keeps running. Run `./seeker` again to come back.
 
 Put the files you want to analyze in `./workspace`. Inside the container this is `/workspace`.
 
 ## Daily Workflow
 
-Use one tmux window per long-running job. For example, `Ctrl-b c` opens a new window:
+Use one tmux window per long-running job. For example, `Ctrl-a c` opens a new window (see [tmux](#tmux) for all shortcuts):
 
 ```bash
 dsh-web        # window 1: DeepSeek Harness Web UI -> http://localhost:3080
@@ -43,7 +43,7 @@ cd /workspace  # window 3: your own work
 | `./seeker` / `./seeker attach [name]` | Attach to a tmux session (default `main`), creating it if missing |
 | `./seeker up` | `docker compose up -d` (builds first; cached builds take seconds) |
 | `./seeker ls` | List tmux sessions |
-| `./seeker sh` | Plain shell, no tmux |
+| `./seeker sh` | Plain zsh, no tmux |
 | `./seeker stop` / `down` | Stop or remove immediately (SIGKILL, no grace period) |
 | `./seeker build` / `logs` | `docker compose build` / `logs -f` |
 
@@ -115,9 +115,40 @@ ARTEX is meant for **authorized targets in an isolated lab**; see its README.
 
 Every third-party version is pinned as a build `ARG` in the `Dockerfile`, with SHA-256 checksums for downloaded artifacts. To upgrade, bump the ARG and run `./seeker up`.
 
+## Shell
+
+zsh is the default shell for root and tmux. It's set up with [djosix/.dots](https://github.com/djosix/.dots) via `make zsh`, which installs:
+
+- oh-my-zsh in `~/.omz` with the `djosix` theme
+- the `zsh-autosuggestions` and `zsh-completions` plugins
+- aliases and functions from `~/.dots/zsh/config.zsh`
+
+Put container-specific tweaks in `~/.zshrc.local`. fzf key bindings (`Ctrl-R`, `Ctrl-T`, `Alt-C`) are loaded last, from `/etc/seeker/zshrc`. Bash is still there with its own defaults.
+
 ## tmux
 
-`/etc/tmux.conf` aims to make tmux feel like the terminal you're running it in:
+`/etc/tmux.conf` keeps the capabilities of the terminal you're running it in, with a screen-style prefix and a compact dark status line: session name on the left, hostname and time on the right, and the current window tab in purple.
+
+### Shortcuts
+
+The prefix is **`Ctrl-a`**. Everything else follows tmux defaults (e.g. `Ctrl-a d` detaches).
+
+| Keys | Action |
+|---|---|
+| `Ctrl-a c` / `Ctrl-a C` | New window in the current directory / in the default directory |
+| `Ctrl-a -` / `Ctrl-a _` | Split top/bottom, in the current directory / default directory |
+| `Ctrl-a \` / `Ctrl-a \|` | Split left/right, in the current directory / default directory |
+| `Shift-←` / `Shift-→` | Previous / next window |
+| `Shift-↑` / `Shift-↓` | Move the current window left / right |
+| `Ctrl-Shift-arrows` | Move between panes |
+| `Ctrl-a h/j/k/l` | Resize pane by 2 cells (`H/J/K/L` for 8) |
+| `Ctrl-a a` | Copy mode |
+| `Ctrl-a r` | Reload config |
+| `Ctrl-a Ctrl-b` | Send a literal `Ctrl-a` (e.g. to the shell, or to a tmux nested inside) |
+
+`Shift-arrows` and `Ctrl-Shift-arrows` are bound without the prefix, so programs inside tmux never receive them.
+
+### Terminal behavior
 
 - **Colors**: uses `tmux-256color`. Truecolor turns on automatically when the host sets `COLORTERM=truecolor` (iTerm2, Ghostty, WezTerm, kitty, and VS Code do). Undercurl and OSC 8 hyperlinks also work.
 - **Keys**: no Esc delay. Extended keys (CSI u) pass through, so combinations like Shift+Enter work. Focus events are forwarded.
@@ -125,9 +156,10 @@ Every third-party version is pinned as a build `ARG` in the `Dockerfile`, with S
   - The wheel scrolls history and drops out of copy mode at the bottom.
   - Drag-select copies to the host clipboard through OSC 52. In iTerm2, enable *Applications in terminal may access clipboard* first.
   - Hold Option (iTerm2, Terminal.app) or Shift (most others) to use the terminal's own selection instead.
-- **Status line**: hidden while a session has only one window, so a plain session looks like a plain terminal. It appears once you open a second window.
 - **terminfo**: `./seeker attach` copies the host's terminfo entry into the container when Debian lacks it, e.g. `xterm-ghostty` or `xterm-kitty`. If that fails, it falls back to `xterm-256color`.
-- **Other defaults**: 100k lines of scrollback; new windows and panes open in the current directory; `Ctrl-b r` reloads the config.
+- **Scrollback**: 100k lines.
+
+If you attach from inside a host tmux that also uses `Ctrl-a`, the outer tmux catches the prefix first. To reach the inner one, press `Ctrl-a Ctrl-b` and then the key.
 
 For personal overrides, use `~/.tmux.conf` inside the container. It loads after the system config and is kept in the `home` volume.
 
@@ -136,7 +168,7 @@ For personal overrides, use `~/.tmux.conf` inside the container. It loads after 
 | Path / volume | Contents |
 |---|---|
 | `./workspace` → `/workspace` | your files (bind mount) |
-| `home` → `/root` | dsh config, credentials, and sessions; REA state; shell history; `~/.tmux.conf` |
+| `home` → `/root` | dsh config, credentials, and sessions; REA state; oh-my-zsh and `.dots`; shell history; `~/.zshrc.local`, `~/.tmux.conf` |
 | `artex-data` → `/opt/artex/data` | ARTEX workspace data |
 | `pgdata` | ARTEX's PostgreSQL |
 
@@ -146,7 +178,7 @@ For personal overrides, use `~/.tmux.conf` inside the container. It loads after 
 | `127.0.0.1:8787` | ARTEX Web UI (`artex-start`) |
 | `127.0.0.1:8788` | ARTEX intercept proxy |
 
-The image's `/root` defaults are copied into the `home` volume only when the volume is first created. To pick up new defaults after changing the image, run `docker volume rm seeker_home`. `docker compose down -v` wipes all data.
+On every start, the container copies any of the image's home defaults (oh-my-zsh, `.dots`, `.zshrc`, the dsh patch, …) that are **missing** from the `home` volume. Existing files are never overwritten, so your edits stick. To restore a default, delete the file and restart the container. `docker compose down -v` wipes all data.
 
 ## Security Notes
 
@@ -170,7 +202,7 @@ The image's `/root` defaults are copied into the `home` volume only when the vol
 ├── seeker                # host helper script
 ├── rootfs/               # copied into the image as-is
 │   ├── etc/tmux.conf
-│   ├── etc/seeker/       # bashrc, dsh home patch
+│   ├── etc/seeker/       # bashrc, zshrc additions, dsh home patch
 │   └── usr/local/bin/    # attach, dsh-web, ds, artex-start, apktool
 └── workspace/            # mounted at /workspace
 ```

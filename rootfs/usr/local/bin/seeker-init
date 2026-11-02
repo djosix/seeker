@@ -1,0 +1,5 @@
+#!/bin/sh
+# Entrypoint: copy home-directory defaults that are missing from the persistent /root
+# volume (existing files are never overwritten), then run the command (sleep infinity).
+cp -a --update=none /etc/seeker/skel/. /root/
+exec "$@"

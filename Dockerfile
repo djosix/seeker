@@ -31,7 +31,7 @@ ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-ENV LANG=C.UTF-8 \
+ENV LANG=en_US.UTF-8 \
     EDITOR=vim \
     JAVA_HOME=/usr/lib/jvm/java-21-openjdk-${TARGETARCH} \
     GHIDRA_INSTALL_DIR=/opt/ghidra \
@@ -44,7 +44,7 @@ ENV LANG=C.UTF-8 \
 RUN echo 'wireshark-common wireshark-common/install-setuid boolean false' | debconf-set-selections \
  && apt-get update && apt-get install -y --no-install-recommends \
       # shell & everyday tools
-      bash-completion ca-certificates curl wget git git-lfs gnupg less nano vim neovim \
+      zsh bash-completion locales ca-certificates curl wget git git-lfs gnupg less nano vim neovim \
       tmux ncurses-term tzdata sudo procps psmisc htop btop tree jq ripgrep fd-find fzf bat \
       file unzip zip 7zip xz-utils zstd rsync openssh-client sqlite3 \
       # build toolchain
@@ -60,6 +60,7 @@ RUN echo 'wireshark-common wireshark-common/install-setuid boolean false' | debc
       # network
       iproute2 iputils-ping dnsutils netcat-openbsd socat nmap whois inetutils-telnet openssl \
  && rm -rf /var/lib/apt/lists/* \
+ && sed -i 's/^# *\(en_US.UTF-8 UTF-8\)/\1/' /etc/locale.gen && locale-gen \
  && ln -s /usr/bin/fdfind /usr/local/bin/fd \
  && ln -s /usr/bin/batcat /usr/local/bin/bat
 
@@ -141,12 +142,27 @@ RUN sha="ARTEX_SHA256_${TARGETARCH}" name="artex-${ARTEX_VERSION}-linux-${TARGET
 
 COPY rootfs/ /
 
-# Shell defaults, then seed $HOME (copied into the `home` volume on first start):
+# zsh as root's shell, set up by djosix/.dots (`make zsh`: oh-my-zsh in ~/.omz, the
+# djosix theme, zsh-autosuggestions, zsh-completions), plus container additions.
+# Debian's global compinit is skipped because oh-my-zsh runs its own.
+RUN git clone --depth 1 https://github.com/djosix/.dots /root/.dots \
+ && make -C /root/.dots zsh \
+ && printf '\n#\n# seeker\n#\nsource /etc/seeker/zshrc\n' >> /root/.zshrc \
+ && echo 'skip_global_compinit=1' > /root/.zshenv \
+ && chsh -s /bin/zsh root
+
+# Bash defaults, then seed $HOME (copied into the `home` volume on first start):
 # dsh's OpenRouter config, and REA registered as an MCP server + skill for dsh.
 RUN echo '. /etc/seeker/bashrc' >> /etc/bash.bashrc \
  && mkdir -p /root/.dsh \
  && cp /etc/seeker/dsh-home.patch.yml /root/.dsh/cordis.patch.yml \
  && rea setup --client dsh --yes
 
+# Snapshot the prepared home as a skeleton. /root is a volume, so seeker-init fills in
+# whatever it's missing on every start, including volumes created by older images.
+RUN rm -rf /root/.cache /root/.npm \
+ && mkdir -p /etc/seeker/skel && cp -a /root/. /etc/seeker/skel/
+
 WORKDIR /workspace
+ENTRYPOINT ["/usr/local/bin/seeker-init"]
 CMD ["sleep", "infinity"]

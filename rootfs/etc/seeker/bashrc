@@ -9,7 +9,7 @@ shopt -s histappend checkwinsize globstar
 PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
 
 [ -r /usr/share/bash-completion/bash_completion ] && . /usr/share/bash-completion/bash_completion
-[ -r /usr/share/doc/fzf/examples/key-bindings.bash ] && . /usr/share/doc/fzf/examples/key-bindings.bash
+command -v fzf >/dev/null && eval "$(fzf --bash)"
 
 eval "$(dircolors -b)"
 alias ls='ls --color=auto' ll='ls -alF' la='ls -A' grep='grep --color=auto' ip='ip -color=auto'
